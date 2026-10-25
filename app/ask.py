@@ -11,6 +11,7 @@
 """
 
 import argparse
+import time
 
 from google import genai
 from google.genai import errors
@@ -21,25 +22,52 @@ from app.config import MODEL, api_error_message, get_api_key
 DEFAULT_QUESTION = "AIE2026の講座の宿題にある「3レベル」とは何ですか？"
 
 
-def ask(question: str) -> str:
+def ask(question: str, model: str = MODEL) -> str:
     client = genai.Client(api_key=get_api_key())
-    response = client.models.generate_content(model=MODEL, contents=question)
+    started_at = time.perf_counter()
+    response = client.models.generate_content(model=model, contents=question)
+    elapsed = time.perf_counter() - started_at
 
-    # TODO(第1回 演習): response.usage_metadata から
-    #   入力トークン数と出力トークン数を表示してみよう（Copilotに頼んでよい）
+    print(f"[応答時間] {elapsed:.2f}秒")
+
+    usage = response.usage_metadata
+    if usage is not None:
+        print(f"[入力トークン数] {usage.prompt_token_count}")
+        print(f"[出力トークン数] {usage.candidates_token_count}")
 
     return response.text
+
+
+def list_models() -> None:
+    client = genai.Client(api_key=get_api_key())
+    models = [
+        model
+        for model in client.models.list()
+        if model.name and model.supported_actions and "generateContent" in model.supported_actions
+    ]
+    if not models:
+        print("生成に対応するモデルが見つかりませんでした。")
+        return
+
+    for model in models:
+        print(f"{model.name} ({model.display_name or '名称なし'})")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="素のLLMに質問する")
     parser.add_argument("question", nargs="?", default=DEFAULT_QUESTION)
+    parser.add_argument("--model", default=MODEL, help="使用するモデル名（既定: %(default)s）")
+    parser.add_argument("--list-models", action="store_true", help="利用可能な生成モデルを一覧表示する")
     args = parser.parse_args()
 
-    print(f"[model] {MODEL}")
-    print(f"[質問] {args.question}\n")
     try:
-        print(ask(args.question))
+        if args.list_models:
+            list_models()
+            return
+
+        print(f"[model] {args.model}")
+        print(f"[質問] {args.question}\n")
+        print(ask(args.question, model=args.model))
     except errors.APIError as e:
         print(api_error_message(e.code, e.message))
         raise SystemExit(1)
