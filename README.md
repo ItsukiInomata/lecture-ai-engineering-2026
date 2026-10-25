@@ -84,7 +84,16 @@ pyproject.toml / uv.lock  依存パッケージとその固定版
 既定モデルは `gemini-3.5-flash-lite` です。環境変数 `AIE_MODEL` で切り替えられます。
 
 ```bash
+# APIキーで利用できる生成モデルを表示
+uv run python -m app.ask --list-models
+
+# この実行だけ別のモデルを使う
+uv run python -m app.ask --model models/gemini-3.5-flash "LoRAとは何ですか？"
+
+# 以降の実行で使う既定モデルを変更
 AIE_MODEL=gemini-3.5-flash uv run python -m app.ask "LoRAとは何ですか？"
 ```
+
+`--model` は `AIE_MODEL` と既定モデルより優先されます。モデル名は `--list-models` の結果から選んでください。表示内容はAPIキーで利用できるモデルに応じて変わります。
 
 無料枠には1分あたり・1日あたりのリクエスト上限があります。上限は [Gemini API のレート制限のページ](https://ai.google.dev/gemini-api/docs/rate-limits) で確認してください。
